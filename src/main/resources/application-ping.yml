@@ -1,0 +1,10 @@
+server:
+  port: ${PORT:8080}   # Render donnera PORT, sinon 8080 en local
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+  main:
+    web-application-type: servlet
