@@ -3,24 +3,28 @@ server:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5432/cultureradar}
-    username: ${DB_USER:postgres}
-    password: "Admin2025!"
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
-      ddl-auto: validate   # en DEV, mets 'update' si besoin
+      ddl-auto: update
     properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
       hibernate.jdbc.time_zone: UTC
       hibernate.format_sql: true
-  flyway:
-    enabled: true
+    open-in-view: false
 
-# ==== Intégrations externes ====
-openagenda:
-  baseUrl: https://api.openagenda.com
-  publicKey: ${OPENAGENDA_PUBLIC_KEY:${OPENAGENDA_API_KEY:}}
-  agendaUid: ${OPENAGENDA_AGENDA_UID:56500817}
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:false}
+
+apis:
+  openagenda:
+    base-url: ${OPENAGENDA_BASE_URL:https://api.openagenda.com/v2}
+    public-key: ${OPENAGENDA_PUBLIC_KEY:}
+    agenda-uid: ${OPENAGENDA_AGENDA_UID:}
 
 ga4:
   measurementId: ${GA4_MEASUREMENT_ID:}
@@ -29,7 +33,6 @@ ga4:
 unsplash:
   accessKey: ${UNSPLASH_ACCESS_KEY:}
 
-# ==== Actuator (diagnostic) ====
 management:
   endpoints:
     web:
@@ -39,16 +42,12 @@ management:
     health:
       show-details: when_authorized
 
-# ==== Logs utiles pour debug (optionnel) ====
 logging:
   level:
+    com.cultureradar: INFO
     org.springframework.web: INFO
-    org.springframework.web.client.RestTemplate: INFO
-    org.springframework.http.client: INFO
-    # com.cultureradar: DEBUG
 
-
-
-
-
-
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration

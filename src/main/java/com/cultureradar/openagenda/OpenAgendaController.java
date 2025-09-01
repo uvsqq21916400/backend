@@ -1,17 +1,17 @@
 package com.cultureradar.openagenda;
 
 import com.cultureradar.openagenda.dto.OaEventList;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/events")
-// Si vous avez déjà un CorsConfig global, vous pouvez retirer @CrossOrigin ici.
 @CrossOrigin(origins = {
-        "http://localhost:3001",         // front en dev (si vous servez en 3001)
-        "http://localhost:3000",         // (optionnel) si vous utilisez 3000 parfois
-        "https://ias-b3-2-paris-g8.fr"   // votre domaine prod (à ajuster)
+        "http://localhost:3001",
+        "http://localhost:3000",
+        "https://ias-b3-2-paris-g8.fr"
 })
 public class OpenAgendaController {
 
@@ -23,27 +23,51 @@ public class OpenAgendaController {
 
     /** Liste simple des évènements à venir (triés chronologiquement) */
     @GetMapping("/upcoming")
-    public OaEventList upcoming(@RequestParam(required = false) Integer size) {
-        return service.listUpcoming(size);
+    public ResponseEntity<?> upcoming(@RequestParam(required = false) Integer size) {
+        try {
+            OaEventList list = service.listUpcoming(size);
+            return ResponseEntity.ok(list);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(502).body(e.getMessage());
+        }
     }
 
     /** Évènements autour d’un point (lat,lng) dans un rayon (km), période optionnelle J+days */
     @GetMapping("/nearby")
-    public OaEventList nearby(
+    public ResponseEntity<?> nearby(
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(defaultValue = "15") double radiusKm,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) Integer days
     ) {
-        return service.listNearby(lat, lng, radiusKm, size, days);
+        try {
+            OaEventList list = service.listNearby(lat, lng, radiusKm, size, days);
+            return ResponseEntity.ok(list);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(502).body(e.getMessage());
+        }
     }
 
-    /** Détail d’un évènement par UID (pour la page /evenements/:uid) */
+    /** Endpoint de diagnostic : renvoie le JSON brut d’OpenAgenda */
+    @GetMapping("/upcomingRaw")
+    public ResponseEntity<String> upcomingRaw(@RequestParam(defaultValue = "3") Integer size) {
+        try {
+            String json = service.listUpcomingRaw(size);
+            return ResponseEntity.ok(json);
+        } catch (Exception e) {
+            return ResponseEntity.status(502).body("OpenAgenda error: " + e.getMessage());
+        }
+    }
+
+    /** Détail d’un évènement par UID */
     @GetMapping("/{uid}")
-    public Map<String, Object> byUid(@PathVariable String uid) {
-        return service.getByUid(uid);
+    public ResponseEntity<?> getByUid(@PathVariable String uid) {
+        try {
+            Map<String, Object> event = service.getByUid(uid);
+            return ResponseEntity.ok(event);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(502).body(e.getMessage());
+        }
     }
 }
-
-

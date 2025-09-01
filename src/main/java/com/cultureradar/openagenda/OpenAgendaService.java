@@ -27,12 +27,38 @@ public class OpenAgendaService {
     /** Liste simple des événements à venir (tri chronologique) */
     public OaEventList listUpcoming(Integer size) {
         MultiValueMap<String, String> q = baseQuery(size);
-
         String path = "/agendas/" + props.agendaUid() + "/events";
+
         return client.get()
                 .uri(uri -> uri.path(path).queryParam("lang", "fr").queryParams(q).build())
+                .header("key", props.publicKey()) // ou props.key() si tu as ajouté l’alias
                 .retrieve()
+                .onStatus(s -> s.value() >= 400 && s.value() < 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 4xx: " + body)))
+                .onStatus(s -> s.value() >= 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 5xx: " + body)))
                 .bodyToMono(OaEventList.class)
+                .block();
+    }
+
+    /** Version “brut JSON” pour diagnostic rapide */
+    public String listUpcomingRaw(Integer size) {
+        MultiValueMap<String, String> q = baseQuery(size);
+        String path = "/agendas/" + props.agendaUid() + "/events";
+
+        return client.get()
+                .uri(uri -> uri.path(path).queryParam("lang", "fr").queryParams(q).build())
+                .header("key", props.publicKey())
+                .retrieve()
+                .onStatus(s -> s.value() >= 400 && s.value() < 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 4xx: " + body)))
+                .onStatus(s -> s.value() >= 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 5xx: " + body)))
+                .bodyToMono(String.class)
                 .block();
     }
 
@@ -52,14 +78,22 @@ public class OpenAgendaService {
         if (days != null && days > 0) {
             OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
             OffsetDateTime toUtc  = nowUtc.plusDays(days);
-            q.add("timings[gte]", nowUtc.toString()); // ISO-8601 (ex: 2025-08-21T00:00:00Z)
+            q.add("timings[gte]", nowUtc.toString());
             q.add("timings[lte]", toUtc.toString());
         }
 
         String path = "/agendas/" + props.agendaUid() + "/events";
+
         return client.get()
                 .uri(uri -> uri.path(path).queryParam("lang", "fr").queryParams(q).build())
+                .header("key", props.publicKey())
                 .retrieve()
+                .onStatus(s -> s.value() >= 400 && s.value() < 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 4xx: " + body)))
+                .onStatus(s -> s.value() >= 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 5xx: " + body)))
                 .bodyToMono(OaEventList.class)
                 .block();
     }
@@ -67,13 +101,20 @@ public class OpenAgendaService {
     /** Récupérer un évènement par UID (pour la page détail) */
     public Map<String, Object> getByUid(String uid) {
         String path = "/agendas/" + props.agendaUid() + "/events/" + uid;
-        // detailed=1 pour avoir description, images, etc.
+
         return client.get()
                 .uri(uri -> uri.path(path)
                         .queryParam("lang", "fr")
                         .queryParam("detailed", "1")
                         .build())
+                .header("key", props.publicKey())
                 .retrieve()
+                .onStatus(s -> s.value() >= 400 && s.value() < 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 4xx: " + body)))
+                .onStatus(s -> s.value() >= 500,
+                        resp -> resp.bodyToMono(String.class)
+                                .map(body -> new RuntimeException("OpenAgenda 5xx: " + body)))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                 .block();
     }
@@ -85,24 +126,24 @@ public class OpenAgendaService {
         q.add("sort", "timings.asc");
         q.add("size", String.valueOf(size != null ? size : 50));
 
-        // Champs minimaux (côté front on affiche titre, timings, lieu…)
+        // Optionnel : ne récupérer que les événements publiés
+        // q.add("state", "2");
+
+        // Champs affichés côté front
         q.add("if[]", "uid");
         q.add("if[]", "title.fr");
         q.add("if[]", "timings");
         q.add("if[]", "location");
 
-        // IMAGES — couvrir toutes les formes possibles renvoyées par OpenAgenda
+        // Images (toutes variantes possibles)
         q.add("if[]", "thumbnail");
         q.add("if[]", "image");
         q.add("if[]", "image.url");
         q.add("if[]", "images");
         q.add("if[]", "images.url");
 
-        // Catégorie / mots-clés (pour le badge sur la carte)
+        // Catégories / mots-clés
         q.add("if[]", "keywords.label.fr");
-
         return q;
     }
 }
-
-
